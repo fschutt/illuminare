@@ -1,0 +1,1897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Illuminare Editor - Medieval Missal Creator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Ribbon Interface */
+        .ribbon {
+            background: linear-gradient(to bottom, #ffffff, #e8e8e8);
+            border-bottom: 1px solid #c0c0c0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: height 0.3s ease;
+        }
+
+        .ribbon.collapsed {
+            height: 35px;
+            overflow: hidden;
+        }
+
+        .ribbon-tabs {
+            display: flex;
+            background: #f0f0f0;
+            border-bottom: 1px solid #d0d0d0;
+            height: 35px;
+        }
+
+        .ribbon-tab {
+            padding: 8px 20px;
+            background: #f0f0f0;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            border-right: 1px solid #d0d0d0;
+            transition: background 0.2s;
+        }
+
+        .ribbon-tab:hover {
+            background: #e0e0e0;
+        }
+
+        .ribbon-tab.active {
+            background: white;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+        }
+
+        .ribbon-collapse {
+            margin-left: auto;
+            background: none;
+            border: none;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .ribbon-content {
+            padding: 10px;
+            background: white;
+            min-height: 120px;
+        }
+
+        .ribbon-panel {
+            display: none;
+        }
+
+        .ribbon-panel.active {
+            display: flex;
+            gap: 20px;
+        }
+
+        .ribbon-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            border-right: 1px solid #e0e0e0;
+            min-width: 80px;
+        }
+
+        .ribbon-group:last-child {
+            border-right: none;
+        }
+
+        .ribbon-group h4 {
+            font-size: 11px;
+            color: #666;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .ribbon-buttons {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .ribbon-button {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 8px;
+            background: white;
+            border: 1px solid #d0d0d0;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            min-width: 60px;
+            transition: all 0.2s;
+        }
+
+        .ribbon-button:hover {
+            background: #f0f8ff;
+            border-color: #0078d4;
+        }
+
+        .ribbon-button.active {
+            background: #cce8ff;
+            border-color: #0078d4;
+        }
+
+        .ribbon-icon {
+            font-size: 18px;
+            margin-bottom: 4px;
+        }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 156px);
+        }
+
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-right: 1px solid #d0d0d0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-tabs {
+            display: flex;
+            background: #f8f8f8;
+            border-bottom: 1px solid #d0d0d0;
+        }
+
+        .sidebar-tab {
+            flex: 1;
+            padding: 8px;
+            background: #f8f8f8;
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+            border-right: 1px solid #d0d0d0;
+        }
+
+        .sidebar-tab.active {
+            background: white;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .sidebar-panel {
+            display: none;
+        }
+
+        .sidebar-panel.active {
+            display: block;
+        }
+
+        .work-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #e8e8e8;
+        }
+
+        .page-navigator {
+            height: 40px;
+            background: white;
+            border-bottom: 1px solid #d0d0d0;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            gap: 10px;
+        }
+
+        .page-canvas-container {
+            flex: 1;
+            overflow: auto;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .page-canvas {
+            width: 595px;
+            min-height: 842px;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            position: relative;
+            border: 1px solid #ccc;
+            cursor: crosshair;
+        }
+
+        /* Page Objects */
+        .page-object {
+            position: absolute;
+            border: 2px dashed transparent;
+            cursor: move;
+            user-select: none;
+        }
+
+        .page-object:hover {
+            border-color: #0078d4;
+        }
+
+        .page-object.selected {
+            border-color: #0078d4;
+            border-style: solid;
+        }
+
+        .page-object.dragging {
+            opacity: 0.7;
+            z-index: 1000;
+        }
+
+        .page-object .resize-handle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #0078d4;
+            border: 1px solid white;
+            right: -4px;
+            bottom: -4px;
+            cursor: se-resize;
+        }
+
+        .page-object.selected .resize-handle {
+            display: block;
+        }
+
+        .page-object .resize-handle {
+            display: none;
+        }
+
+        /* Object Types */
+        .text-object {
+            font-family: 'Times New Roman', serif;
+            line-height: 1.6;
+            padding: 10px;
+            min-width: 100px;
+            min-height: 30px;
+        }
+
+        .prayer-object {
+            font-family: 'Times New Roman', serif;
+            line-height: 1.8;
+            padding: 15px;
+            min-width: 200px;
+        }
+
+        .prayer-title {
+            text-align: center;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #8B4513;
+            font-size: 16px;
+        }
+
+        .prayer-text {
+            text-align: justify;
+        }
+
+        .rubric {
+            color: #DC143C;
+            font-style: italic;
+            font-size: 0.9em;
+        }
+
+        .initial-object {
+            font-size: 4em;
+            line-height: 0.8;
+            font-weight: bold;
+            color: #8B4513;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(139, 69, 19, 0.1);
+        }
+
+        .chant-object {
+            border: 1px solid #ddd;
+            background: #fafafa;
+            padding: 10px;
+            min-width: 300px;
+            min-height: 100px;
+        }
+
+        .chant-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #8B4513;
+        }
+
+        .chant-notation {
+            font-family: 'Times New Roman', serif;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .image-object {
+            border: 1px solid #ccc;
+            background: #f9f9f9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 100px;
+            min-height: 100px;
+        }
+
+        .image-object img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .decoration-object {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            width: 50px;
+            height: 50px;
+            color: #8B4513;
+        }
+
+        /* Properties Panel */
+        .properties-panel {
+            width: 300px;
+            background: white;
+            border-left: 1px solid #d0d0d0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .properties-header {
+            padding: 10px 15px;
+            background: #f8f8f8;
+            border-bottom: 1px solid #d0d0d0;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .properties-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #d0d0d0;
+            border-radius: 3px;
+            font-size: 13px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Catalog Items */
+        .catalog-search {
+            margin-bottom: 15px;
+        }
+
+        .catalog-search input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d0d0d0;
+            border-radius: 20px;
+            font-size: 13px;
+        }
+
+        .catalog-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .catalog-item {
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .catalog-item:hover {
+            background: #f0f8ff;
+            border-color: #0078d4;
+        }
+
+        .catalog-item.selected {
+            background: #cce8ff;
+            border-color: #0078d4;
+        }
+
+        .catalog-item h5 {
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: #333;
+        }
+
+        .catalog-item p {
+            font-size: 11px;
+            color: #666;
+            margin: 0;
+            line-height: 1.3;
+        }
+
+        .prayer-preview {
+            font-style: italic;
+            font-size: 11px;
+            color: #888;
+            margin-top: 5px;
+            max-height: 40px;
+            overflow: hidden;
+        }
+
+        /* Object Toolbox */
+        .object-toolbox {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .object-tool {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px 10px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .object-tool:hover {
+            border-color: #0078d4;
+            background: #f0f8ff;
+        }
+
+        .object-tool.active {
+            border-color: #0078d4;
+            background: #cce8ff;
+        }
+
+        .object-tool-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .object-tool-label {
+            font-size: 11px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            height: 25px;
+            background: #f0f0f0;
+            border-top: 1px solid #d0d0d0;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .status-item {
+            margin-right: 20px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            background: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #106ebe;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 11px;
+        }
+
+        .btn-full {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        /* Hidden elements */
+        .hidden {
+            display: none;
+        }
+
+        /* Drop zones */
+        .drop-zone {
+            position: absolute;
+            border: 2px dashed #0078d4;
+            background: rgba(0, 120, 212, 0.1);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .drop-zone.active {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Ribbon Interface -->
+    <div class="ribbon" id="ribbon">
+        <div class="ribbon-tabs">
+            <button class="ribbon-tab active" data-tab="home">Home</button>
+            <button class="ribbon-tab" data-tab="insert">Insert</button>
+            <button class="ribbon-tab" data-tab="layout">Layout</button>
+            <button class="ribbon-tab" data-tab="tools">Tools</button>
+            <button class="ribbon-collapse" id="ribbonCollapse">⌄</button>
+        </div>
+        
+        <div class="ribbon-content">
+            <!-- Home Tab -->
+            <div class="ribbon-panel active" data-panel="home">
+                <div class="ribbon-group">
+                    <div class="ribbon-buttons">
+                        <button class="ribbon-button" id="newProject">
+                            <span class="ribbon-icon">📄</span>
+                            New
+                        </button>
+                        <button class="ribbon-button" id="openProject">
+                            <span class="ribbon-icon">📂</span>
+                            Open
+                        </button>
+                        <button class="ribbon-button" id="saveProject">
+                            <span class="ribbon-icon">💾</span>
+                            Save
+                        </button>
+                    </div>
+                    <h4>Project</h4>
+                </div>
+                
+                <div class="ribbon-group">
+                    <div class="ribbon-buttons">
+                        <button class="ribbon-button" id="exportPdf">
+                            <span class="ribbon-icon">📃</span>
+                            Export PDF
+                        </button>
+                        <button class="ribbon-button" id="previewMissal">
+                            <span class="ribbon-icon">👁</span>
+                            Preview
+                        </button>
+                    </div>
+                    <h4>Export</h4>
+                </div>
+                
+                <div class="ribbon-group">
+                    <div class="ribbon-buttons">
+                        <button class="ribbon-button" id="addPage">
+                            <span class="ribbon-icon">➕</span>
+                            Add Page
+                        </button>
+                        <button class="ribbon-button" id="deletePage">
+                            <span class="ribbon-icon">🗑</span>
+                            Delete
+                        </button>
+                    </div>
+                    <h4>Pages</h4>
+                </div>
+                
+                <div class="ribbon-group">
+                    <div class="ribbon-buttons">
+                        <button class="ribbon-button" id="undoAction">
+                            <span class="ribbon-icon">↶</span>
+                            Undo
+                        </button>
+                        <button class="ribbon-button" id="redoAction">
+                            <span class="ribbon-icon">↷</span>
+                            Redo
+                        </button>
+                    </div>
+                    <h4>History</h4>
+                </div>
+            </div>
+            
+            <!-- Insert Tab -->
+            <div class="ribbon-panel" data-panel="insert">
+                <div class="ribbon-group">
+                    <div class="ribbon-buttons">
+                        <button class="ribbon-button" id="insertText">
+                            <span class="ribbon-icon">📝</span>
+                            Text
+                        </button>
+                        <button class="ribbon-button" id="insertPrayer">
+                            <span class="ribbon-icon">📿</span>
+                            Prayer
+                        </button>
+                    </div>
+                    <h4>Text</h4>
+                </div>
+                
+                <div class="ribbon-group">
+                    <div class="ribbon-buttons">
+                        <button class="ribbon-button" id="insertInitial">
+                            <span class="ribbon-icon">🅰</span>
+                            Initial
+                        </button>
+                        <button class="ribbon-button" id="insertDecoration">
+                            <span class="ribbon-icon">🌸</span>
+                            Ornament
+                        </button>
+                    </div>
+                    <h4>Decoration</h4>
+                </div>
+                
+                <div class="ribbon-group">
+                    <div class="ribbon-buttons">
+                        <button class="ribbon-button" id="insertImage">
+                            <span class="ribbon-icon">🖼</span>
+                            Image
+                        </button>
+                        <button class="ribbon-button" id="insertChant">
+                            <span class="ribbon-icon">🎵</span>
+                            Chant
+                        </button>
+                    </div>
+                    <h4>Media</h4>
+                </div>
+            </div>
+            
+            <!-- Layout Tab -->
+            <div class="ribbon-panel" data-panel="layout">
+                <div class="ribbon-group">
+                    <div class="ribbon-buttons">
+                        <button class="ribbon-button" id="alignLeft">
+                            <span class="ribbon-icon">⫷</span>
+                            Left
+                        </button>
+                        <button class="ribbon-button" id="alignCenter">
+                            <span class="ribbon-icon">⫸</span>
+                            Center
+                        </button>
+                        <button class="ribbon-button" id="alignRight">
+                            <span class="ribbon-icon">⫸</span>
+                            Right
+                        </button>
+                    </div>
+                    <h4>Align</h4>
+                </div>
+                
+                <div class="ribbon-group">
+                    <div class="ribbon-buttons">
+                        <button class="ribbon-button" id="bringToFront">
+                            <span class="ribbon-icon">⬆</span>
+                            Front
+                        </button>
+                        <button class="ribbon-button" id="sendToBack">
+                            <span class="ribbon-icon">⬇</span>
+                            Back
+                        </button>
+                    </div>
+                    <h4>Order</h4>
+                </div>
+                
+                <div class="ribbon-group">
+                    <div class="ribbon-buttons">
+                        <button class="ribbon-button" id="groupObjects">
+                            <span class="ribbon-icon">⊞</span>
+                            Group
+                        </button>
+                        <button class="ribbon-button" id="ungroupObjects">
+                            <span class="ribbon-icon">⊟</span>
+                            Ungroup
+                        </button>
+                    </div>
+                    <h4>Group</h4>
+                </div>
+            </div>
+            
+            <!-- Tools Tab -->
+            <div class="ribbon-panel" data-panel="tools">
+                <div class="ribbon-group">
+                    <div class="ribbon-buttons">
+                        <button class="ribbon-button" id="generateIndex">
+                            <span class="ribbon-icon">📑</span>
+                            Index
+                        </button>
+                        <button class="ribbon-button" id="generateToc">
+                            <span class="ribbon-icon">📋</span>
+                            Contents
+                        </button>
+                    </div>
+                    <h4>Generate</h4>
+                </div>
+                
+                <div class="ribbon-group">
+                    <div class="ribbon-buttons">
+                        <button class="ribbon-button" id="validateLiturgy">
+                            <span class="ribbon-icon">✓</span>
+                            Validate
+                        </button>
+                        <button class="ribbon-button" id="spellCheck">
+                            <span class="ribbon-icon">📝</span>
+                            Spelling
+                        </button>
+                    </div>
+                    <h4>Review</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-tabs">
+                <button class="sidebar-tab active" data-tab="objects">Objects</button>
+                <button class="sidebar-tab" data-tab="prayers">Prayers</button>
+                <button class="sidebar-tab" data-tab="chants">Chants</button>
+                <button class="sidebar-tab" data-tab="resources">Resources</button>
+            </div>
+            
+            <div class="sidebar-content">
+                <!-- Objects Panel -->
+                <div class="sidebar-panel active" data-panel="objects">
+                    <h4>Page Objects</h4>
+                    <div class="object-toolbox">
+                        <div class="object-tool" data-object="text">
+                            <div class="object-tool-icon">📝</div>
+                            <div class="object-tool-label">Text Block</div>
+                        </div>
+                        <div class="object-tool" data-object="prayer">
+                            <div class="object-tool-icon">📿</div>
+                            <div class="object-tool-label">Prayer</div>
+                        </div>
+                        <div class="object-tool" data-object="initial">
+                            <div class="object-tool-icon">🅰</div>
+                            <div class="object-tool-label">Initial Cap</div>
+                        </div>
+                        <div class="object-tool" data-object="image">
+                            <div class="object-tool-icon">🖼</div>
+                            <div class="object-tool-label">Image</div>
+                        </div>
+                        <div class="object-tool" data-object="decoration">
+                            <div class="object-tool-icon">🌸</div>
+                            <div class="object-tool-label">Decoration</div>
+                        </div>
+                        <div class="object-tool" data-object="chant">
+                            <div class="object-tool-icon">🎵</div>
+                            <div class="object-tool-label">Chant</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Prayers Panel -->
+                <div class="sidebar-panel" data-panel="prayers">
+                    <div class="catalog-search">
+                        <input type="text" placeholder="Search prayers..." id="prayerSearch">
+                    </div>
+                    
+                    <div class="catalog-list" id="prayerList">
+                        <div class="catalog-item" data-prayer="kyrie">
+                            <h5>Kyrie Eleison</h5>
+                            <p>Ordinary of the Mass</p>
+                            <div class="prayer-preview">Kyrie eleison. Christe eleison...</div>
+                        </div>
+                        <div class="catalog-item" data-prayer="gloria">
+                            <h5>Gloria in Excelsis</h5>
+                            <p>Ordinary of the Mass</p>
+                            <div class="prayer-preview">Gloria in excelsis Deo...</div>
+                        </div>
+                        <div class="catalog-item" data-prayer="sanctus">
+                            <h5>Sanctus</h5>
+                            <p>Ordinary of the Mass</p>
+                            <div class="prayer-preview">Sanctus, Sanctus, Sanctus...</div>
+                        </div>
+                        <div class="catalog-item" data-prayer="agnus-dei">
+                            <h5>Agnus Dei</h5>
+                            <p>Ordinary of the Mass</p>
+                            <div class="prayer-preview">Agnus Dei, qui tollis...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Chants Panel -->
+                <div class="sidebar-panel" data-panel="chants">
+                    <div class="catalog-search">
+                        <input type="text" placeholder="Search Gregobase..." id="chantSearch">
+                    </div>
+                    
+                    <div class="catalog-list" id="chantList">
+                        <div class="catalog-item" data-chant="kyrie-xi">
+                            <h5>Kyrie XI (Orbis Factor)</h5>
+                            <p>Mode: VIII • Feast: Ordinary Sundays</p>
+                            <div class="prayer-preview">Traditional Kyrie chant...</div>
+                        </div>
+                        <div class="catalog-item" data-chant="gloria-viii">
+                            <h5>Gloria VIII (De Angelis)</h5>
+                            <p>Mode: V • Feast: Feasts and Sundays</p>
+                            <div class="prayer-preview">Gloria in excelsis Deo...</div>
+                        </div>
+                        <div class="catalog-item" data-chant="sanctus-viii">
+                            <h5>Sanctus VIII (De Angelis)</h5>
+                            <p>Mode: V • Feast: Feasts and Sundays</p>
+                            <div class="prayer-preview">Sanctus Dominus Deus...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Resources Panel -->
+                <div class="sidebar-panel" data-panel="resources">
+                    <div class="form-group">
+                        <button class="btn btn-full" id="uploadImage">Upload Image</button>
+                        <button class="btn btn-full" id="uploadFont">Upload Font</button>
+                    </div>
+                    
+                    <h4>Uploaded Images</h4>
+                    <div id="uploadedImages"></div>
+                    
+                    <h4>Uploaded Fonts</h4>
+                    <div id="uploadedFonts"></div>
+                    
+                    <h4>Available Decorations</h4>
+                    <div class="object-toolbox">
+                        <div class="catalog-item" data-decoration="floral-corner">
+                            <h5>🌿 Floral Corner</h5>
+                        </div>
+                        <div class="catalog-item" data-decoration="celtic-knot">
+                            <h5>⚜ Celtic Knot</h5>
+                        </div>
+                        <div class="catalog-item" data-decoration="vine-border">
+                            <h5>🍃 Vine Border</h5>
+                        </div>
+                        <div class="catalog-item" data-decoration="cross">
+                            <h5>✠ Cross</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Work Area -->
+        <div class="work-area">
+            <div class="page-navigator">
+                <button class="btn btn-small" id="prevPage">Previous</button>
+                <span>Page <span id="currentPageNum">1</span> of <span id="totalPages">1</span></span>
+                <button class="btn btn-small" id="nextPage">Next</button>
+                <select id="pageSelect">
+                    <option value="0">Page 1</option>
+                </select>
+            </div>
+            
+            <div class="page-canvas-container">
+                <div class="page-canvas" id="pageCanvas">
+                    <!-- Page objects will be inserted here -->
+                </div>
+                <div class="drop-zone" id="dropZone"></div>
+            </div>
+        </div>
+
+        <!-- Properties Panel -->
+        <div class="properties-panel">
+            <div class="properties-header" id="propertiesHeader">No Object Selected</div>
+            <div class="properties-content" id="propertiesContent">
+                <p>Select an object on the page to edit its properties.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="status-item">Project: <span id="projectName">Untitled Missal</span></div>
+        <div class="status-item">Objects: <span id="objectCount">0</span></div>
+        <div class="status-item">Selected: <span id="selectedObject">None</span></div>
+        <div class="status-item">Mouse: <span id="mousePosition">0, 0</span></div>
+    </div>
+
+    <!-- Hidden file inputs -->
+    <input type="file" id="fileInput" style="display: none;" accept=".json">
+    <input type="file" id="imageInput" style="display: none." accept="image/*">
+    <input type="file" id="fontInput" style="display: none." accept=".ttf,.otf,.woff,.woff2">
+
+    <script>
+        // Object System
+        class PageObject {
+            constructor(type, x = 50, y = 50, width = 200, height = 100) {
+                this.id = 'obj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                this.type = type;
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.zIndex = 1;
+                this.content = {};
+                this.style = {};
+                this.element = null;
+                this.connected = [];
+            }
+
+            createElement() {
+                const element = document.createElement('div');
+                element.className = `page-object ${this.type}-object`;
+                element.id = this.id;
+                element.style.left = this.x + 'px';
+                element.style.top = this.y + 'px';
+                element.style.width = this.width + 'px';
+                element.style.height = this.height + 'px';
+                element.style.zIndex = this.zIndex;
+                
+                // Add resize handle
+                const resizeHandle = document.createElement('div');
+                resizeHandle.className = 'resize-handle';
+                element.appendChild(resizeHandle);
+                
+                this.element = element;
+                this.updateDisplay();
+                this.attachEventListeners();
+                
+                return element;
+            }
+
+            updateDisplay() {
+                if (!this.element) return;
+                
+                switch (this.type) {
+                    case 'text':
+                        this.updateTextDisplay();
+                        break;
+                    case 'prayer':
+                        this.updatePrayerDisplay();
+                        break;
+                    case 'initial':
+                        this.updateInitialDisplay();
+                        break;
+                    case 'image':
+                        this.updateImageDisplay();
+                        break;
+                    case 'chant':
+                        this.updateChantDisplay();
+                        break;
+                    case 'decoration':
+                        this.updateDecorationDisplay();
+                        break;
+                }
+            }
+
+            updateTextDisplay() {
+                const text = this.content.text || 'Enter text here...';
+                this.element.innerHTML = `<div class="resize-handle"></div>${text}`;
+            }
+
+            updatePrayerDisplay() {
+                const title = this.content.title || 'Prayer Title';
+                const text = this.content.text || 'Prayer text goes here...';
+                this.element.innerHTML = `
+                    <div class="resize-handle"></div>
+                    <div class="prayer-title">${title}</div>
+                    <div class="prayer-text">${text}</div>
+                `;
+            }
+
+            updateInitialDisplay() {
+                const letter = this.content.letter || 'A';
+                const svgContent = this.content.svgContent || null;
+                
+                if (svgContent) {
+                    this.element.innerHTML = `<div class="resize-handle"></div>${svgContent}`;
+                } else {
+                    this.element.innerHTML = `<div class="resize-handle"></div>${letter}`;
+                }
+            }
+
+            updateImageDisplay() {
+                const src = this.content.src || '';
+                const alt = this.content.alt || 'Image';
+                
+                if (src) {
+                    this.element.innerHTML = `
+                        <div class="resize-handle"></div>
+                        <img src="${src}" alt="${alt}">
+                    `;
+                } else {
+                    this.element.innerHTML = `
+                        <div class="resize-handle"></div>
+                        <div style="text-align: center; color: #666; padding: 20px;">📷<br>No Image</div>
+                    `;
+                }
+            }
+
+            updateChantDisplay() {
+                const title = this.content.title || 'Chant Title';
+                const notation = this.content.notation || 'Chant notation...';
+                
+                this.element.innerHTML = `
+                    <div class="resize-handle"></div>
+                    <div class="chant-title">${title}</div>
+                    <div class="chant-notation">${notation}</div>
+                `;
+            }
+
+            updateDecorationDisplay() {
+                const symbol = this.content.symbol || '🌸';
+                this.element.innerHTML = `<div class="resize-handle"></div>${symbol}`;
+            }
+
+            attachEventListeners() {
+                if (!this.element) return;
+                
+                // Selection
+                this.element.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectObject(this);
+                });
+
+                // Dragging
+                this.element.addEventListener('mousedown', (e) => {
+                    if (e.target.classList.contains('resize-handle')) return;
+                    startDrag(this, e);
+                });
+
+                // Resizing
+                const resizeHandle = this.element.querySelector('.resize-handle');
+                if (resizeHandle) {
+                    resizeHandle.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                        startResize(this, e);
+                    });
+                }
+            }
+
+            updatePosition(x, y) {
+                this.x = Math.max(0, Math.min(x, 595 - this.width));
+                this.y = Math.max(0, Math.min(y, 842 - this.height));
+                
+                if (this.element) {
+                    this.element.style.left = this.x + 'px';
+                    this.element.style.top = this.y + 'px';
+                }
+            }
+
+            updateSize(width, height) {
+                this.width = Math.max(20, width);
+                this.height = Math.max(20, height);
+                
+                if (this.element) {
+                    this.element.style.width = this.width + 'px';
+                    this.element.style.height = this.height + 'px';
+                }
+            }
+
+            getPropertiesPanel() {
+                const commonProps = `
+                    <div class="form-group">
+                        <label>X Position</label>
+                        <input type="number" id="prop-x" value="${this.x}" min="0" max="595">
+                    </div>
+                    <div class="form-group">
+                        <label>Y Position</label>
+                        <input type="number" id="prop-y" value="${this.y}" min="0" max="842">
+                    </div>
+                    <div class="form-group">
+                        <label>Width</label>
+                        <input type="number" id="prop-width" value="${this.width}" min="20">
+                    </div>
+                    <div class="form-group">
+                        <label>Height</label>
+                        <input type="number" id="prop-height" value="${this.height}" min="20">
+                    </div>
+                    <div class="form-group">
+                        <label>Z-Index</label>
+                        <input type="number" id="prop-zindex" value="${this.zIndex}" min="1">
+                    </div>
+                `;
+
+                switch (this.type) {
+                    case 'text':
+                        return commonProps + `
+                            <div class="form-group">
+                                <label>Text Content</label>
+                                <textarea id="prop-text">${this.content.text || ''}</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Font Size</label>
+                                <input type="number" id="prop-fontsize" value="${this.content.fontSize || 14}" min="8" max="72">
+                            </div>
+                        `;
+                    case 'prayer':
+                        return commonProps + `
+                            <div class="form-group">
+                                <label>Prayer Title</label>
+                                <input type="text" id="prop-title" value="${this.content.title || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>Prayer Text</label>
+                                <textarea id="prop-text">${this.content.text || ''}</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Has Initial Capital</label>
+                                <input type="checkbox" id="prop-hasinitial" ${this.content.hasInitial ? 'checked' : ''}>
+                            </div>
+                        `;
+                    case 'initial':
+                        return commonProps + `
+                            <div class="form-group">
+                                <label>Letter</label>
+                                <input type="text" id="prop-letter" value="${this.content.letter || 'A'}" maxlength="1">
+                            </div>
+                            <div class="form-group">
+                                <label>Style</label>
+                                <select id="prop-style">
+                                    <option value="simple" ${this.content.style === 'simple' ? 'selected' : ''}>Simple</option>
+                                    <option value="decorated" ${this.content.style === 'decorated' ? 'selected' : ''}>Decorated</option>
+                                    <option value="illuminated" ${this.content.style === 'illuminated' ? 'selected' : ''}>Illuminated</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Convert to SVG</label>
+                                <button class="btn btn-small" id="prop-convertsvg">Convert to SVG</button>
+                            </div>
+                        `;
+                    case 'image':
+                        return commonProps + `
+                            <div class="form-group">
+                                <label>Image Source</label>
+                                <input type="text" id="prop-src" value="${this.content.src || ''}" placeholder="Image URL or select from resources">
+                            </div>
+                            <div class="form-group">
+                                <label>Alt Text</label>
+                                <input type="text" id="prop-alt" value="${this.content.alt || ''}">
+                            </div>
+                            <div class="form-group">
+                                <button class="btn btn-small" id="prop-selectimage">Select from Resources</button>
+                            </div>
+                        `;
+                    case 'chant':
+                        return commonProps + `
+                            <div class="form-group">
+                                <label>Chant Title</label>
+                                <input type="text" id="prop-title" value="${this.content.title || ''}">
+                            </div>
+                            <div class="form-group">
+                                <label>Search Gregobase</label>
+                                <input type="text" id="prop-search" placeholder="Search for chant...">
+                                <button class="btn btn-small" id="prop-searchbtn">Search</button>
+                            </div>
+                            <div class="form-group">
+                                <label>Notation (SVG)</label>
+                                <textarea id="prop-notation">${this.content.notation || ''}</textarea>
+                            </div>
+                        `;
+                    case 'decoration':
+                        return commonProps + `
+                            <div class="form-group">
+                                <label>Symbol</label>
+                                <input type="text" id="prop-symbol" value="${this.content.symbol || '🌸'}">
+                            </div>
+                            <div class="form-group">
+                                <label>Color</label>
+                                <input type="color" id="prop-color" value="${this.content.color || '#8B4513'}">
+                            </div>
+                        `;
+                    default:
+                        return commonProps;
+                }
+            }
+
+            updateFromProperties() {
+                const x = parseInt(document.getElementById('prop-x')?.value) || this.x;
+                const y = parseInt(document.getElementById('prop-y')?.value) || this.y;
+                const width = parseInt(document.getElementById('prop-width')?.value) || this.width;
+                const height = parseInt(document.getElementById('prop-height')?.value) || this.height;
+                const zIndex = parseInt(document.getElementById('prop-zindex')?.value) || this.zIndex;
+
+                this.updatePosition(x, y);
+                this.updateSize(width, height);
+                this.zIndex = zIndex;
+                this.element.style.zIndex = zIndex;
+
+                // Type-specific properties
+                switch (this.type) {
+                    case 'text':
+                        this.content.text = document.getElementById('prop-text')?.value || '';
+                        this.content.fontSize = parseInt(document.getElementById('prop-fontsize')?.value) || 14;
+                        break;
+                    case 'prayer':
+                        this.content.title = document.getElementById('prop-title')?.value || '';
+                        this.content.text = document.getElementById('prop-text')?.value || '';
+                        this.content.hasInitial = document.getElementById('prop-hasinitial')?.checked || false;
+                        break;
+                    case 'initial':
+                        this.content.letter = document.getElementById('prop-letter')?.value || 'A';
+                        this.content.style = document.getElementById('prop-style')?.value || 'simple';
+                        break;
+                    case 'image':
+                        this.content.src = document.getElementById('prop-src')?.value || '';
+                        this.content.alt = document.getElementById('prop-alt')?.value || '';
+                        break;
+                    case 'chant':
+                        this.content.title = document.getElementById('prop-title')?.value || '';
+                        this.content.notation = document.getElementById('prop-notation')?.value || '';
+                        break;
+                    case 'decoration':
+                        this.content.symbol = document.getElementById('prop-symbol')?.value || '🌸';
+                        this.content.color = document.getElementById('prop-color')?.value || '#8B4513';
+                        if (this.element) {
+                            this.element.style.color = this.content.color;
+                        }
+                        break;
+                }
+
+                this.updateDisplay();
+            }
+
+            toPrintPdfOps() {
+                const ops = [];
+                const mmX = this.x * 0.352778; // Convert px to mm (rough conversion)
+                const mmY = (842 - this.y - this.height) * 0.352778; // Flip Y coordinate and convert
+
+                switch (this.type) {
+                    case 'text':
+                    case 'prayer':
+                        ops.push({
+                            type: "set-text-cursor",
+                            data: { pos: { x: mmX, y: mmY } }
+                        });
+                        
+                        if (this.content.text) {
+                            ops.push({
+                                type: "write-text-builtin-font",
+                                data: {
+                                    items: [this.content.text],
+                                    size: this.content.fontSize || 12,
+                                    font: "times-roman"
+                                }
+                            });
+                        }
+                        break;
+
+                    case 'initial':
+                        ops.push({
+                            type: "set-text-cursor", 
+                            data: { pos: { x: mmX, y: mmY } }
+                        });
+                        ops.push({
+                            type: "write-text-builtin-font",
+                            data: {
+                                items: [this.content.letter || 'A'],
+                                size: 36,
+                                font: "times-roman"
+                            }
+                        });
+                        break;
+
+                    case 'image':
+                        if (this.content.src && projectData.resources.images[this.content.src]) {
+                            ops.push({
+                                type: "use-xobject",
+                                data: {
+                                    id: this.content.src,
+                                    transform: {
+                                        translateX: mmX,
+                                        translateY: mmY,
+                                        scaleX: this.width * 0.352778 / 100, // Scale to fit
+                                        scaleY: this.height * 0.352778 / 100,
+                                        rotate: null,
+                                        dpi: null
+                                    }
+                                }
+                            });
+                        }
+                        break;
+                }
+
+                return ops;
+            }
+        }
+
+        // Global State
+        let projectData = {
+            name: "Untitled Missal",
+            pages: [{ objects: [] }],
+            resources: { images: {}, fonts: {} },
+            currentPage: 0
+        };
+
+        let selectedObject = null;
+        let isDragging = false;
+        let isResizing = false;
+        let dragOffset = { x: 0, y: 0 };
+        let currentTool = null;
+
+        // Prayer Catalog
+        const prayerCatalog = {
+            "kyrie": {
+                title: "Kyrie Eleison",
+                text: "Kyrie eleison.\nChriste eleison.\nKyrie eleison."
+            },
+            "gloria": {
+                title: "Gloria in Excelsis",
+                text: "Gloria in excelsis Deo et in terra pax hominibus bonae voluntatis. Laudamus te, benedicimus te, adoramus te, glorificamus te."
+            },
+            "sanctus": {
+                title: "Sanctus",
+                text: "Sanctus, Sanctus, Sanctus Dominus Deus Sabaoth. Pleni sunt caeli et terra gloria tua. Hosanna in excelsis."
+            },
+            "agnus-dei": {
+                title: "Agnus Dei", 
+                text: "Agnus Dei, qui tollis peccata mundi: miserere nobis.\nAgnus Dei, qui tollis peccata mundi: dona nobis pacem."
+            }
+        };
+
+        // Initialization
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeInterface();
+            updateObjectCount();
+        });
+
+        function initializeInterface() {
+            initializeRibbon();
+            initializeSidebar();
+            initializeCanvas();
+            initializeEventListeners();
+        }
+
+        function initializeRibbon() {
+            const ribbonTabs = document.querySelectorAll('.ribbon-tab');
+            const ribbonPanels = document.querySelectorAll('.ribbon-panel');
+
+            ribbonTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabName = tab.dataset.tab;
+                    ribbonTabs.forEach(t => t.classList.remove('active'));
+                    ribbonPanels.forEach(p => p.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.querySelector(`[data-panel="${tabName}"]`).classList.add('active');
+                });
+            });
+
+            document.getElementById('ribbonCollapse').addEventListener('click', () => {
+                const ribbon = document.getElementById('ribbon');
+                ribbon.classList.toggle('collapsed');
+                document.getElementById('ribbonCollapse').textContent = 
+                    ribbon.classList.contains('collapsed') ? '⌃' : '⌄';
+            });
+        }
+
+        function initializeSidebar() {
+            const sidebarTabs = document.querySelectorAll('.sidebar-tab');
+            const sidebarPanels = document.querySelectorAll('.sidebar-panel');
+
+            sidebarTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabName = tab.dataset.tab;
+                    sidebarTabs.forEach(t => t.classList.remove('active'));
+                    sidebarPanels.forEach(p => p.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.querySelector(`[data-panel="${tabName}"]`).classList.add('active');
+                });
+            });
+        }
+
+        function initializeCanvas() {
+            const canvas = document.getElementById('pageCanvas');
+            
+            // Canvas click to deselect
+            canvas.addEventListener('click', (e) => {
+                if (e.target === canvas) {
+                    selectObject(null);
+                }
+            });
+
+            // Tool placement
+            canvas.addEventListener('click', (e) => {
+                if (currentTool && e.target === canvas) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    createObject(currentTool, x, y);
+                    currentTool = null;
+                    updateToolboxSelection();
+                }
+            });
+
+            // Mouse position tracking
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const x = Math.round(e.clientX - rect.left);
+                const y = Math.round(e.clientY - rect.top);
+                document.getElementById('mousePosition').textContent = `${x}, ${y}`;
+            });
+        }
+
+        function initializeEventListeners() {
+            // Ribbon buttons
+            document.getElementById('newProject').addEventListener('click', newProject);
+            document.getElementById('saveProject').addEventListener('click', saveProject);
+            document.getElementById('openProject').addEventListener('click', () => {
+                document.getElementById('fileInput').click();
+            });
+            document.getElementById('exportPdf').addEventListener('click', exportToPdf);
+
+            // Object tools
+            document.querySelectorAll('.object-tool').forEach(tool => {
+                tool.addEventListener('click', () => {
+                    currentTool = tool.dataset.object;
+                    updateToolboxSelection();
+                    document.getElementById('pageCanvas').style.cursor = 'crosshair';
+                });
+            });
+
+            // Prayer catalog
+            document.querySelectorAll('.catalog-item[data-prayer]').forEach(item => {
+                item.addEventListener('dblclick', () => {
+                    const prayer = prayerCatalog[item.dataset.prayer];
+                    if (prayer) {
+                        const obj = createObject('prayer', 50, 50);
+                        obj.content.title = prayer.title;
+                        obj.content.text = prayer.text;
+                        obj.updateDisplay();
+                    }
+                });
+            });
+
+            // File inputs
+            document.getElementById('fileInput').addEventListener('change', loadProject);
+            document.getElementById('imageInput').addEventListener('change', uploadImage);
+
+            // Global mouse events for dragging
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', handleKeyDown);
+        }
+
+        function updateToolboxSelection() {
+            document.querySelectorAll('.object-tool').forEach(tool => {
+                tool.classList.toggle('active', tool.dataset.object === currentTool);
+            });
+        }
+
+        function createObject(type, x, y) {
+            const obj = new PageObject(type, x, y);
+            
+            // Set default content based on type
+            switch (type) {
+                case 'text':
+                    obj.content.text = 'Enter text here...';
+                    obj.content.fontSize = 14;
+                    break;
+                case 'prayer':
+                    obj.content.title = 'Prayer Title';
+                    obj.content.text = 'Prayer text goes here...';
+                    break;
+                case 'initial':
+                    obj.content.letter = 'A';
+                    obj.content.style = 'simple';
+                    obj.width = 60;
+                    obj.height = 60;
+                    break;
+                case 'decoration':
+                    obj.content.symbol = '🌸';
+                    obj.content.color = '#8B4513';
+                    obj.width = 50;
+                    obj.height = 50;
+                    break;
+                case 'chant':
+                    obj.content.title = 'Chant Title';
+                    obj.content.notation = 'Chant notation...';
+                    obj.width = 300;
+                    obj.height = 100;
+                    break;
+            }
+
+            const element = obj.createElement();
+            document.getElementById('pageCanvas').appendChild(element);
+            
+            projectData.pages[projectData.currentPage].objects.push(obj);
+            updateObjectCount();
+            selectObject(obj);
+            
+            return obj;
+        }
+
+        function selectObject(obj) {
+            // Deselect previous
+            if (selectedObject) {
+                selectedObject.element?.classList.remove('selected');
+            }
+            
+            selectedObject = obj;
+            
+            if (obj) {
+                obj.element?.classList.add('selected');
+                updatePropertiesPanel(obj);
+                document.getElementById('selectedObject').textContent = `${obj.type} (${obj.id})`;
+            } else {
+                updatePropertiesPanel(null);
+                document.getElementById('selectedObject').textContent = 'None';
+            }
+        }
+
+        function updatePropertiesPanel(obj) {
+            const header = document.getElementById('propertiesHeader');
+            const content = document.getElementById('propertiesContent');
+            
+            if (!obj) {
+                header.textContent = 'No Object Selected';
+                content.innerHTML = '<p>Select an object on the page to edit its properties.</p>';
+                return;
+            }
+            
+            header.textContent = `${obj.type.charAt(0).toUpperCase() + obj.type.slice(1)} Properties`;
+            content.innerHTML = obj.getPropertiesPanel();
+            
+            // Attach property change listeners
+            content.querySelectorAll('input, select, textarea').forEach(input => {
+                input.addEventListener('input', () => {
+                    obj.updateFromProperties();
+                });
+            });
+
+            // Special button handlers
+            const convertSvgBtn = document.getElementById('prop-convertsvg');
+            if (convertSvgBtn) {
+                convertSvgBtn.addEventListener('click', () => {
+                    // Convert initial to SVG (placeholder)
+                    obj.content.svgContent = `<svg width="60" height="60" viewBox="0 0 60 60">
+                        <text x="30" y="45" text-anchor="middle" font-size="36" font-family="serif" fill="#8B4513">${obj.content.letter}</text>
+                    </svg>`;
+                    obj.updateDisplay();
+                });
+            }
+        }
+
+        function startDrag(obj, e) {
+            isDragging = true;
+            selectedObject = obj;
+            obj.element.classList.add('dragging');
+            
+            const rect = obj.element.getBoundingClientRect();
+            const canvasRect = document.getElementById('pageCanvas').getBoundingClientRect();
+            
+            dragOffset.x = e.clientX - rect.left;
+            dragOffset.y = e.clientY - rect.top;
+            
+            e.preventDefault();
+        }
+
+        function startResize(obj, e) {
+            isResizing = true;
+            selectedObject = obj;
+            e.preventDefault();
+        }
+
+        function handleMouseMove(e) {
+            if (isDragging && selectedObject) {
+                const canvasRect = document.getElementById('pageCanvas').getBoundingClientRect();
+                const x = e.clientX - canvasRect.left - dragOffset.x;
+                const y = e.clientY - canvasRect.top - dragOffset.y;
+                
+                selectedObject.updatePosition(x, y);
+                updatePropertiesPanel(selectedObject);
+            } else if (isResizing && selectedObject) {
+                const canvasRect = document.getElementById('pageCanvas').getBoundingClientRect();
+                const x = e.clientX - canvasRect.left;
+                const y = e.clientY - canvasRect.top;
+                
+                const width = x - selectedObject.x;
+                const height = y - selectedObject.y;
+                
+                selectedObject.updateSize(width, height);
+                updatePropertiesPanel(selectedObject);
+            }
+        }
+
+        function handleMouseUp(e) {
+            if (isDragging && selectedObject) {
+                selectedObject.element.classList.remove('dragging');
+            }
+            isDragging = false;
+            isResizing = false;
+        }
+
+        function handleKeyDown(e) {
+            if (e.key === 'Delete' && selectedObject) {
+                deleteSelectedObject();
+            } else if (e.key === 'Escape') {
+                selectObject(null);
+                currentTool = null;
+                updateToolboxSelection();
+                document.getElementById('pageCanvas').style.cursor = 'default';
+            }
+        }
+
+        function deleteSelectedObject() {
+            if (!selectedObject) return;
+            
+            const objects = projectData.pages[projectData.currentPage].objects;
+            const index = objects.indexOf(selectedObject);
+            
+            if (index > -1) {
+                selectedObject.element.remove();
+                objects.splice(index, 1);
+                selectObject(null);
+                updateObjectCount();
+            }
+        }
+
+        function updateObjectCount() {
+            const count = projectData.pages[projectData.currentPage].objects.length;
+            document.getElementById('objectCount').textContent = count;
+        }
+
+        function newProject() {
+            if (confirm('Create new project? Unsaved changes will be lost.')) {
+                projectData = {
+                    name: "Untitled Missal",
+                    pages: [{ objects: [] }],
+                    resources: { images: {}, fonts: {} },
+                    currentPage: 0
+                };
+                
+                document.getElementById('pageCanvas').innerHTML = '';
+                selectObject(null);
+                updateObjectCount();
+                document.getElementById('projectName').textContent = projectData.name;
+            }
+        }
+
+        function saveProject() {
+            // Convert objects to serializable format
+            const saveData = {
+                ...projectData,
+                pages: projectData.pages.map(page => ({
+                    objects: page.objects.map(obj => ({
+                        id: obj.id,
+                        type: obj.type,
+                        x: obj.x,
+                        y: obj.y,
+                        width: obj.width,
+                        height: obj.height,
+                        zIndex: obj.zIndex,
+                        content: obj.content,
+                        style: obj.style,
+                        connected: obj.connected
+                    }))
+                }))
+            };
+            
+            const blob = new Blob([JSON.stringify(saveData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${projectData.name}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function loadProject(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    projectData = data;
+                    
+                    // Clear canvas
+                    document.getElementById('pageCanvas').innerHTML = '';
+                    
+                    // Recreate objects
+                    projectData.pages[projectData.currentPage].objects = 
+                        projectData.pages[projectData.currentPage].objects.map(objData => {
+                            const obj = new PageObject(objData.type, objData.x, objData.y, objData.width, objData.height);
+                            obj.id = objData.id;
+                            obj.zIndex = objData.zIndex;
+                            obj.content = objData.content;
+                            obj.style = objData.style;
+                            obj.connected = objData.connected;
+                            
+                            const element = obj.createElement();
+                            document.getElementById('pageCanvas').appendChild(element);
+                            
+                            return obj;
+                        });
+                    
+                    selectObject(null);
+                    updateObjectCount();
+                    document.getElementById('projectName').textContent = projectData.name;
+                    
+                } catch (error) {
+                    alert('Error loading project: ' + error.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function uploadImage() {
+            document.getElementById('imageInput').click();
+            
+            document.getElementById('imageInput').onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    const imageId = 'img_' + Date.now();
+                    projectData.resources.images[imageId] = {
+                        name: file.name,
+                        data: event.target.result,
+                        type: file.type
+                    };
+                    
+                    updateResourcesList();
+                };
+                reader.readAsDataURL(file);
+            };
+        }
+
+        function updateResourcesList() {
+            const imagesContainer = document.getElementById('uploadedImages');
+            imagesContainer.innerHTML = '';
+            
+            Object.entries(projectData.resources.images).forEach(([id, img]) => {
+                const item = document.createElement('div');
+                item.className = 'catalog-item';
+                item.innerHTML = `<h5>${img.name}</h5>`;
+                item.addEventListener('click', () => {
+                    if (selectedObject && selectedObject.type === 'image') {
+                        selectedObject.content.src = img.data;
+                        selectedObject.content.alt = img.name;
+                        selectedObject.updateDisplay();
+                        updatePropertiesPanel(selectedObject);
+                    }
+                });
+                imagesContainer.appendChild(item);
+            });
+        }
+
+        function exportToPdf() {
+            try {
+                const pdfDocument = generatePrintPdfDocument();
+                
+                // This would integrate with your printpdf system
+                console.log('Generated PDF Document:', pdfDocument);
+                
+                // For now, show the generated structure
+                alert('PDF document structure generated. Check console for details.\n\nThis would be passed to printpdf for final PDF creation.');
+                
+            } catch (error) {
+                alert('Error generating PDF: ' + error.message);
+            }
+        }
+
+        function generatePrintPdfDocument() {
+            const doc = {
+                metadata: {
+                    info: {
+                        trapped: false,
+                        version: 1,
+                        creationDate: new Date().toISOString(),
+                        modificationDate: new Date().toISOString(),
+                        metadataDate: new Date().toISOString(),
+                        conformance: "pdf-a-1b",
+                        documentTitle: projectData.name,
+                        author: "Illuminare Editor",
+                        creator: "Illuminare Editor",
+                        producer: "printpdf.js",
+                        keywords: ["missal", "liturgy", "medieval"],
+                        subject: "Medieval Missal",
+                        identifier: "missal_" + Date.now()
+                    },
+                    xmp: null
+                },
+                resources: {
+                    fonts: {},
+                    xobjects: {},
+                    extgstates: {},
+                    layers: {}
+                },
+                bookmarks: {},
+                pages: []
+            };
+
+            // Add images to resources
+            Object.entries(projectData.resources.images).forEach(([id, img]) => {
+                doc.resources.xobjects[id] = {
+                    type: "image",
+                    data: img.data
+                };
+            });
+
+            // Generate pages
+            projectData.pages.forEach((page, pageIndex) => {
+                const pageOps = [];
+                
+                // Sort objects by z-index
+                const sortedObjects = [...page.objects].sort((a, b) => a.zIndex - b.zIndex);
+                
+                // Convert each object to PDF operations
+                sortedObjects.forEach(obj => {
+                    const ops = obj.toPrintPdfOps();
+                    pageOps.push(...ops);
+                });
+
+                doc.pages.push({
+                    mediaBox: { x: 0, y: 0, width: 210, height: 297 }, // A4 in mm
+                    trimBox: { x: 0, y: 0, width: 210, height: 297 },
+                    cropBox: { x: 0, y: 0, width: 210, height: 297 },
+                    ops: pageOps
+                });
+            });
+
+            return doc;
+        }
+    </script>
+</body>
+</html>
